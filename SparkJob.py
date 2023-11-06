@@ -32,64 +32,59 @@ POSTGRES_PASSWORD = 'postgres'
 #     StructField('dt', DateType(), True)
 # ])
 
-def extract(spark: SparkSession, postgres_host, postgres_port, postgres_database, postgres_user, postgres_password,  name_table, logger):
-    try:
-        connection_properties = {
-                    'user': f'{postgres_user}',
-                    'password': f'{postgres_password}',
-                    'driver': 'org.postgresql.Driver'}
-        table = spark.read.jdbc(
-            url = f"jdbc:postgresql://{postgres_host}:{postgres_port}/{postgres_database}",
-            table = name_table,
-            properties = connection_properties
-        )
-        logger.info(f"Retrieving data from the {name_table} table is completed")
-        return table
-    except:
-        logger.error(f"Failed to retrive data from table {name_table}")
+def get_table(spark: SparkSession, postgres_host, postgres_port, postgres_database, postgres_user, postgres_password,  name_table):
+    connection_properties = {
+                'user': f'{postgres_user}',
+                'password': f'{postgres_password}',
+                'driver': 'org.postgresql.Driver'}
+    table = spark.read.jdbc(
+        url = f"jdbc:postgresql://{postgres_host}:{postgres_port}/{postgres_database}",
+        table = name_table,
+        properties = connection_properties
+    )
+    return table
 
-def load_data(df: DataFrame, postgres_host, postgres_port, postgres_database, postgres_user, postgres_password,  name_table, logger):
-    try:
-        connection_properties = {
-            'user': f'{postgres_user}',
-            'password': f'{postgres_password}',
-            'driver': 'org.postgresql.Driver'}
+def load_data(df: DataFrame, postgres_host, postgres_port, postgres_database, postgres_user, postgres_password,  name_table):
+    connection_properties = {
+        'user': f'{postgres_user}',
+        'password': f'{postgres_password}',
+        'driver': 'org.postgresql.Driver'}
 
-        df.write.mode("append").jdbc(
-            url = f'jdbc:postgresql://{postgres_host}:{postgres_port}/{postgres_database}',
-            table = name_table,
-            properties = connection_properties)
-        logger.info(f"Loading data into the table {name_table} completed successfully")
-    except:
-        logger.error(f"Failed to load data from table {name_table}")
+    df.write.mode("append").jdbc(
+        url = f'jdbc:postgresql://{postgres_host}:{postgres_port}/{postgres_database}',
+        table = name_table,
+        properties = connection_properties)
+    
 
-def get_RUR(currency:str):
+def get_RUR(currency):
     RUR = requests.get('https://www.cbr-xml-daily.ru/daily_json.js').json()
     return RUR["Valute"][f"{currency}"]["Value"]
 
-def run_parse(profession_name, logger):
-    try:
+
+def main(spark: SparkSession):
+
+    context = spark.sparkContext
+    logger = context._jvm.org.apache.log4j.LogManager.getLogger("com.contoso.PythonLoggerExample")
+    logger.info("Spark session, spark context and logger created")
+
+    profession = get_table(spark, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'profession')
+    
+
+    for profession_name in profession[["name", "en_name", "profession_id"]].collect():
+        logger.info(profession_name)
+        vacancies = get_table(spark, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'vacancies')
         url = 'http://localhost:8080/parse'
         headers = {'Content-type': 'application/json',
                 'Accept': 'text/plain',
                 'Content-Encoding': 'utf-8'}
-        data = {'profession':profession_name
+        data = {'profession':profession_name[0]
             ,'city_id':'1'
-            ,'date': str(date.today() - timedelta(days=14))}
+            ,'date': str(date.today() - timedelta(days=1))}
+    
         answer = requests.post(url, headers=headers, json=data)
-        if answer.status_code == 200:
-            logger.info("Data parsing completed successfully")
-        else:
-            logger.error("Data parsing failed successfully")
-    except:
-        logger.error("Error in data parsing")
-    finally:
+        logger.info(f"answer {str(answer.status_code)}")
         answer.close()
 
-
-
-def transform(vacancies, profession_name, logger):
-    try:
         vacancies = (vacancies.withColumn("lower_name", 
                         f.replace(f.lower(f.col('profession')), 
                                 f.lit('-'), 
@@ -115,15 +110,13 @@ def transform(vacancies, profession_name, logger):
                 f.col("schedule"),
                 f.col("skills"),
                 f.col("salary")))
-
-            
         
         metrics = (vacancies.groupBy(
             f.col("city_id"),
             f.col("profession_id"),
             f.col("dt"))
             .agg(f.count(f.col("vacancy_id")).alias("cnt"),
-                    f.round(f.avg(f.col("salary")), 2).alias("avg_salary"))
+                 f.round(f.avg(f.col("salary")), 2).alias("avg_salary"))
             .select(
                 f.col("city_id"),
                 f.col("profession_id"),
@@ -150,7 +143,7 @@ def transform(vacancies, profession_name, logger):
                                     f.col("profession_id"),
                                     f.col("dt"))
                     .pivot("experience",
-                            ["noExperience", "between1And3", "between3And6", "moreThan6"])
+                           ["noExperience", "between1And3", "between3And6", "moreThan6"])
                     .avg("salary")
                     .select(
                         f.col("city_id"),
@@ -163,7 +156,7 @@ def transform(vacancies, profession_name, logger):
                         ))
         
         schedule = (vacancies.groupBy(f.col("city_id"), f.col("profession_id"), f.col("dt"))
-                    .pivot("schedule",["fullDay", "shift", "flexible", "remote", "flyInFlyOut"]) 
+                   .pivot("schedule",["fullDay", "shift", "flexible", "remote", "flyInFlyOut"]) 
                     .count()
                     .select(f.col("city_id"),
                             f.col("profession_id"),
@@ -198,10 +191,8 @@ def transform(vacancies, profession_name, logger):
                         schedule["shift_schedule_cnt"],
                         schedule["fly_in_fly_out_schedule_cnt"]
                     ))
-        logger.info("Data transformation completed successfully")
-        return result
-    except:
-        logger.error("Error in data transformation")
+        
+        load_data(result, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'metrics')
 
 
 
@@ -210,24 +201,10 @@ def transform(vacancies, profession_name, logger):
 
 
 if __name__ == "__main__":  
-    spark = (SparkSession
+    main(SparkSession
          .builder
          .config('spark.jars', '/opt/spark/jars/postgresql-42.6.0.jar')
          .master('local')
          .appName('ETL Statistic')
          .getOrCreate())
-    context = spark.sparkContext
-    logger = context._jvm.org.apache.log4j.LogManager.getLogger("com.contoso.PythonLoggerExample")
-    logger.info("Spark job start")
-    logger.info("Spark session, context and logger creation completed")
-    
-    profession = extract(spark, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'profession', logger)
-
-    if profession:
-        for profession_name in profession[["name", "en_name", "profession_id"]].collect():
-            run_parse(profession_name[0], logger)
-            vacancies = extract(spark, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'vacancies', logger)
-            result = transform(vacancies, profession_name, logger)
-            load_data(result, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD, 'metrics', logger)
-
 
