@@ -1,0 +1,5 @@
+HOST=stand-db
+PORT=5432
+NAME_DATABASE=stand_db
+USER=postgres
+PASSWORD=stand
