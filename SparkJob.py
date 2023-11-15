@@ -5,11 +5,11 @@ from pyspark.sql import functions as f
 # from pyspark.sql.types import StructType, StructField, StringType, TimestampType, IntegerType, DoubleType, DateType, ArrayType
 
 # Postgres
-POSTGRES_HOST = 'localhost'
-POSTGRES_PORT = 5432
-POSTGRES_DATABASE = 'stand-db'
+POSTGRES_HOST = 'stand-db'
+POSTGRES_PORT = 54323
+POSTGRES_DATABASE = 'stand_db'
 POSTGRES_USER = 'postgres'
-POSTGRES_PASSWORD = 'postgres'
+POSTGRES_PASSWORD = 'stand'
 
 # vacancies_schema = StructType([
 #     StructField('vacancy_id', IntegerType(), True),
@@ -58,7 +58,7 @@ def load_data(df: DataFrame, postgres_host, postgres_port, postgres_database, po
 def run_parse(profession_name, logger):
     try:
         logger.info("Start parse")
-        url = 'http://localhost:8080/parse'
+        url = 'http://pet-api:8080/parse'
         headers = {'Content-type': 'application/json',
                 'Accept': 'text/plain',
                 'Content-Encoding': 'utf-8'}
@@ -68,11 +68,10 @@ def run_parse(profession_name, logger):
 
         answer = requests.post(url, headers=headers, json=data)
         logger.info(f"answer {str(answer.status_code)}")
-    except:
-        logger.error("Error parsing")
-    finally:
         answer.close()
         logger.info("End of parsing")
+    except:
+        logger.error("Error parsing")
 
 def transform_to_metrics(vacancies, profession_name, logger):
     try:
