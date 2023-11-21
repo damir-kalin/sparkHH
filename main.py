@@ -1,4 +1,5 @@
 import requests
+import os
 from datetime import date, timedelta
 from pyspark.sql import SparkSession, DataFrame, Column
 from pyspark.sql import functions as f
@@ -227,9 +228,10 @@ def transform_to_skills_metrics(vacancies, profession_name, logger):
         logger.error("Error return skills")  
 
 if __name__ == "__main__":  
+    jar_postgres = os.environ['SPARK_HOME']
     spark = (SparkSession
          .builder
-         .config('spark.jars', '/opt/spark/jars/postgresql-42.6.0.jar')
+         .config('spark.jars', f'{jar_postgres}/jars/postgresql-42.6.0.jar')
          .master('local')
          .appName('ETL Statistic')
          .getOrCreate())
