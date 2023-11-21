@@ -20,24 +20,23 @@ from pyspark.sql import functions as f
 def get_config(logger):
     config = None
     try:
-        with open("./_config", 'r', encoding='utf-8') as f:
+        with open(".env", 'r', encoding='utf-8') as f:
             config =  {x.strip().split('=')[0]:x.strip().split('=')[1] for x in f.readlines()}
             logger.info("Read config")
             return config
     except:
-        logger.error("_config file is missing")
+        logger.error(".env file is missing")
 
-def get_table(spark: SparkSession, name_table, logger):
-    config = get_config(logger)
+def get_table(spark: SparkSession, name_table, config, logger):
     if config:
         try:
             logger.info(f"Get data from {name_table}")
             connection_properties = {
-                        'user': config['USER'],
-                        'password': config['PASSWORD'],
+                        'user': config['DB_USER'],
+                        'password': config['DB_PASSWORD'],
                         'driver': 'org.postgresql.Driver'}
             table = spark.read.jdbc(
-                url = f"jdbc:postgresql://{config['HOST']}:{config['PORT']}/{config['NAME_DATABASE']}",
+                url = f"jdbc:postgresql://{config['DB_HOST']}:{config['DB_PORT']}/{config['DB_NAME']}",
                 table = name_table,
                 properties = connection_properties
             )
@@ -45,27 +44,26 @@ def get_table(spark: SparkSession, name_table, logger):
         except:
             logger.error("Error with Postgres")
 
-def load_data(df: DataFrame, name_table, logger):
-    config = get_config(logger)
+def load_data(df: DataFrame, name_table, config, logger):
     if config:
         try:
             connection_properties = {
-                'user': config['USER'],
-                'password': config['PASSWORD'],
+                'user': config['DB_USER'],
+                'password': config['DB_PASSWORD'],
                 'driver': 'org.postgresql.Driver'}
 
             df.write.mode("append").jdbc(
-                url = f"jdbc:postgresql://{config['HOST']}:{config['PORT']}/{config['NAME_DATABASE']}",
+                url = f"jdbc:postgresql://{config['DB_HOST']}:{config['DB_PORT']}/{config['DB_NAME']}",
                 table = name_table,
                 properties = connection_properties)
             logger.info(f"Data load to {name_table} successfully")
         except:
             logger.error("Error load to databse")
 
-def run_parse(profession_name, logger):
+def run_parse(profession_name, config, logger):
     try:
         logger.info("Start parse")
-        url = 'http://localhost:8080/parse'
+        url = f"http://{config['PARSE_HOST']}:{config['PARSE_PORT']}/parse"
         headers = {'Content-type': 'application/json',
                 'Accept': 'text/plain',
                 'Content-Encoding': 'utf-8'}
@@ -238,15 +236,16 @@ if __name__ == "__main__":
     context = spark.sparkContext
     logger = context._jvm.org.apache.log4j.LogManager.getLogger("com.contoso.PythonLoggerExample")
     logger.info("Spark session, spark context and logger created")
-    profession = get_table(spark, 'profession', logger)
+    config = get_config(logger)
+    profession = get_table(spark, 'profession', config, logger)
     if profession:
         for profession_name in profession[["name", "en_name", "profession_id"]].collect():
             logger.info(f"Run with data profession - {profession_name}")
             run_parse(profession_name[0], logger)
-            vacancies = get_table(spark, 'vacancies', logger)
+            vacancies = get_table(spark, 'vacancies', config, logger)
             metrics = transform_to_metrics(vacancies, profession_name, logger)
-            load_data(metrics, 'metrics', logger)
+            load_data(metrics, 'metrics', config, logger)
             skills = transform_to_skills_metrics(vacancies, profession_name, logger)
-            load_data(skills, 'skills', logger)
+            load_data(skills, 'skills', config, logger)
             logger.info(f"Job with {profession_name} successfully")    
         logger.info("Spark job successfully")
