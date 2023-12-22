@@ -62,21 +62,21 @@ def load_data(df: DataFrame, name_table, config, logger):
             logger.error("Error load to databse")
 
 def run_parse(profession_name, config, logger):
-    # try:
-    logger.info("Start parse")
-    url = f"http://{config['PARSE_HOST']}:{config['PARSE_PORT']}/parse"
-    headers = {'Content-type': 'application/json',
-            'Accept': 'text/plain',
-            'Content-Encoding': 'utf-8'}
-    data = {'profession':profession_name
-        ,'city_id':'1'
-        ,'date': str(date.today() - timedelta(days=1))}
-    answer = requests.post(url, headers=headers, json=data)
-    logger.info(f"answer {str(answer.status_code)}")
-    answer.close()
-    logger.info("End of parsing")
-    # except:
-    #     logger.error("Error parsing")
+    try:
+        logger.info("Start parse")
+        url = f"http://{config['PARSE_HOST']}:{config['PARSE_PORT']}/parse"
+        headers = {'Content-type': 'application/json',
+                'Accept': 'text/plain',
+                'Content-Encoding': 'utf-8'}
+        data = {'profession':profession_name
+            ,'city_id':'1'
+            ,'date': str(date.today() - timedelta(days=1))}
+        answer = requests.post(url, headers=headers, json=data)
+        logger.info(f"answer {str(answer.status_code)}")
+        answer.close()
+        logger.info("End of parsing")
+    except:
+        logger.error("Error parsing")
 
 def transform_to_metrics(vacancies, profession_name, logger):
     try:
