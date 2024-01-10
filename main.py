@@ -80,7 +80,7 @@ def run_parse(profession_name, config, logger):
 
 def transform_to_metrics(vacancies, profession_name, logger):
     vacancies = (vacancies.withColumn("lower_name", 
-                        f.replace(f.lower(f.col('profession')), 
+                        f.regex_replace(f.lower(f.col('profession')), 
                                 f.lit('-'), 
                                 f.lit(" ")))
             .filter(((f.contains(f.col("lower_name"), 
