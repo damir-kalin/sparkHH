@@ -248,7 +248,7 @@ if __name__ == "__main__":
     if profession:
         for profession_name in profession[["name", "en_name", "profession_id"]].collect():
             logger.info(f"Run with data profession - {profession_name}")
-            if date.today().isoweekday()== 1:
+            if date.today().isoweekday()== 3:
                 run_parse(profession_name[0], config, logger)
                 vacancies = get_table(spark, 'vacancies', config, logger)
                 metrics = transform_to_metrics(vacancies, profession_name, logger)
