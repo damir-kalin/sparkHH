@@ -83,9 +83,9 @@ def transform_to_metrics(vacancies, profession_name, logger):
                         f.regexp_replace(f.lower(f.col('profession')), 
                                 f.lit('-'), 
                                 f.lit(" ")))
-            .filter(((f.contains(f.col("lower_name"), 
+            .filter(((f.instr(f.col("lower_name"), 
                                 f.lit(profession_name[0]))) | 
-                    (f.contains(f.col("lower_name"), 
+                    (f.instr(f.col("lower_name"), 
                                 f.lit(profession_name[1])))) &
                     f.col("dt").between(date.today() - timedelta(days=7), date.today() - timedelta(days=1)))
             .withColumn("profession_id", f.lit(profession_name[2]))
