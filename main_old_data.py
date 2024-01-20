@@ -100,7 +100,7 @@ def transform_to_metrics(vacancies, profession_name, logger):
                 f.col("schedule"),
                 f.col("skills"),
                 f.col("salary"),
-                f.date_format('dt', 'u').alias('dow_number')))
+                f.date_format('dt', 'F').alias('dow_number')))
         logger.info("Transform data vacancies")
         metrics = vacancies
 
