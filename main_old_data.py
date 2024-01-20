@@ -256,7 +256,7 @@ if __name__ == "__main__":
 
             vacancies = get_table(spark, 'vacancies', config, logger)
             metrics = transform_to_metrics(vacancies, profession_name, logger)
-            metrics.show(2)
+            metrics.show(10)
 
             # if date.today().isoweekday()== 1:
             #     run_parse(profession_name[0], config, logger)
