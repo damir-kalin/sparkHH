@@ -175,9 +175,9 @@ def transform_to_metrics(vacancies, profession_name, logger):
         logger.info("Transform data vacancies to metrics")
 
         metrics = (
-            metrics.join(experience, ["city_id", "profession_id"])
-                .join(salary, ["city_id", "profession_id"])
-                .join(schedule, ["city_id", "profession_id"])
+            metrics.join(experience, ["city_id", "profession_id", "dt"])
+                .join(salary, ["city_id", "profession_id", "dt"])
+                .join(schedule, ["city_id", "profession_id", "dt"])
                 .select(
                     metrics["city_id"],
                     metrics["profession_id"],
