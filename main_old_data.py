@@ -86,10 +86,12 @@ def transform_to_metrics(vacancies, profession_name, logger):
                         f.replace(f.lower(f.col('profession')), 
                                 f.lit('-'), 
                                 f.lit(" ")))
-            .filter((f.contains(f.col("lower_name"), 
+            .filter(((f.contains(f.col("lower_name"), 
                                 f.lit(profession_name[0]))) | 
                     (f.contains(f.col("lower_name"), 
-                                f.lit(profession_name[1]))))
+                                f.lit(profession_name[1])))) &
+                    (f.col("dt_t").isNotNull())
+                                )
             .withColumn("profession_id", f.lit(profession_name[2]))
             .withColumn("salary", ((f.col("salary_from")+ f.col("salary_to")) / 2))
             .select(
@@ -100,8 +102,7 @@ def transform_to_metrics(vacancies, profession_name, logger):
                 f.col("schedule"),
                 f.col("skills"),
                 f.col("salary"),
-                f.col("dt"),
-                f.date_format('dt', 'F').alias('dow_number')))
+                f.col("dt_t")))
         logger.info("Transform data vacancies")
         metrics = vacancies
 
