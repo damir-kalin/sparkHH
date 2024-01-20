@@ -248,21 +248,15 @@ if __name__ == "__main__":
     if profession:
         for profession_name in profession[["name", "en_name", "profession_id"]].collect():
             logger.info(f"Run with data profession - {profession_name}")
-
-            logger.info(f"!!!!!!!!!!!!!!!!!!!!!! {date.today().isoweekday()}")
-            vacancies = get_table(spark, 'vacancies', config, logger)
-            metrics = transform_to_metrics(vacancies, profession_name, logger)
-            metrics.show()
-
-            # if date.today().isoweekday()== 3:
-                # run_parse(profession_name[0], config, logger)
-                # vacancies = get_table(spark, 'vacancies', config, logger)
-                # metrics = transform_to_metrics(vacancies, profession_name, logger)
-                # load_data(metrics, 'metrics', config, logger)
-                # skills = transform_to_skills_metrics(vacancies, profession_name, logger)
-                # load_data(skills, 'skills', config, logger)
-                # logger.info(f"Job with {profession_name} successfully")
-            # else:
-                # run_parse(profession_name[0], config, logger)
-                # logger.info(f"Job with {profession_name} successfully")
+            if date.today().isoweekday()== 1:
+                run_parse(profession_name[0], config, logger)
+                vacancies = get_table(spark, 'vacancies', config, logger)
+                metrics = transform_to_metrics(vacancies, profession_name, logger)
+                load_data(metrics, 'metrics', config, logger)
+                skills = transform_to_skills_metrics(vacancies, profession_name, logger)
+                load_data(skills, 'skills', config, logger)
+                logger.info(f"Job with {profession_name} successfully")
+            else:
+                run_parse(profession_name[0], config, logger)
+                logger.info(f"Job with {profession_name} successfully")
         logger.info("Spark job successfully")
