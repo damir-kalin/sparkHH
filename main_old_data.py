@@ -214,26 +214,30 @@ def transform_to_skills_metrics(vacancies, profession_name, logger):
                                 f.lit(profession_name[0]))) | 
                     (f.contains(f.col("lower_name"), 
                                 f.lit(profession_name[1])))) &
-                    f.col("dt").between(date.today() - timedelta(days=7), date.today() - timedelta(days=1)))
+                                (f.col("dt_t").isNotNull())
+                    )
             .withColumn("profession_id", f.lit(profession_name[2]))
             .select(
                 f.col("vacancy_id"),
                 f.col("city_id"),
                 f.col("profession_id"),
-                f.col("skills")))
+                f.col("skills"),
+                f.col("dt_t").alias("dt")))
         logger.info("Transform data vacancies to skills")
 
         skills = (vacancies.where(f.size(f.col("skills"))>0)
                     .select(f.col("city_id"), 
                             f.col("profession_id"),
+                            f.col("dt"),
                             f.explode(f.col("skills")).alias("name"))
                     .groupBy(f.col("city_id"), 
                                 f.col("profession_id"),
-                                f.col("name"))
+                                f.col("name"),
+                                f.col("dt"))
                     .count()
                     .select(f.col("city_id"), 
                             f.col("profession_id"),
-                            f.lit(date.today()).alias("dt"), 
+                            f.col("dt"), 
                             f.col("name"),
                             f.col("count").alias("cnt")
                             )
@@ -264,7 +268,9 @@ if __name__ == "__main__":
 
             vacancies = get_table(spark, 'vacancies', config, logger)
             metrics = transform_to_metrics(vacancies, profession_name, logger)
-            metrics.show(10)
+            # load_data(metrics, 'metrics', config, logger)
+            skills = transform_to_skills_metrics(vacancies, profession_name, logger)
+            skills.show(10)
 
             # if date.today().isoweekday()== 1:
             #     run_parse(profession_name[0], config, logger)
